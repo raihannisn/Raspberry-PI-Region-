@@ -1,0 +1,197 @@
+{
+	"info": {
+		"_postman_id": "4af176c1-94f9-44b0-964e-ce91d854346e",
+		"name": "Biofarma Fase 2 - Local",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "10904841"
+	},
+	"item": [
+		{
+			"name": "Get Settings",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://127.0.0.1:5000/api/settings",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "5000",
+					"path": [
+						"api",
+						"settings"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Testing FLAG",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://127.0.0.1:6000/flag",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "6000",
+					"path": [
+						"flag"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Update/Create Settings",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "current_region",
+							"value": "2",
+							"description": "1-5",
+							"type": "text",
+							"disabled": true
+						},
+						{
+							"key": "delay",
+							"value": "2",
+							"type": "text",
+							"disabled": true
+						},
+						{
+							"key": "step",
+							"value": "2",
+							"type": "text",
+							"disabled": true
+						},
+						{
+							"key": "status",
+							"value": "0",
+							"description": "0 : Standby",
+							"type": "text",
+							"disabled": true
+						},
+						{
+							"key": "axis",
+							"value": "100",
+							"type": "text",
+							"disabled": true
+						},
+						{
+							"key": "auto_start_status",
+							"value": "false",
+							"type": "text",
+							"disabled": true
+						},
+						{
+							"key": "cpe1_time",
+							"value": "5",
+							"type": "text",
+							"disabled": true
+						},
+						{
+							"key": "cpe2_time",
+							"value": "5",
+							"type": "text",
+							"disabled": true
+						},
+						{
+							"key": "cpe3_time",
+							"value": "5",
+							"type": "text",
+							"disabled": true
+						},
+						{
+							"key": "cpe4_time",
+							"value": "5",
+							"type": "text",
+							"disabled": true
+						},
+						{
+							"key": "multi_region",
+							"value": "",
+							"type": "text",
+							"disabled": true
+						}
+					]
+				},
+				"url": {
+					"raw": "http://127.0.0.1:5000/api/settings/update",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "5000",
+					"path": [
+						"api",
+						"settings",
+						"update"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Upload CPE",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "image",
+							"type": "file",
+							"src": "/home/mkryuto/Pictures/1674289506697.jpeg"
+						},
+						{
+							"key": "type",
+							"value": "multi",
+							"description": "multi / single",
+							"type": "text"
+						},
+						{
+							"key": "region",
+							"value": "2",
+							"description": "1,2,3,4,5",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "http://127.0.0.1:5000/api/cpe",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "5000",
+					"path": [
+						"api",
+						"cpe"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

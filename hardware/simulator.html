@@ -1,0 +1,487 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Microscope Controller Simulator</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
+    <style>
+        .hardReset {
+            background-color: red;
+            color: white;
+        }
+
+        .hardReset:hover {
+            background-color: white;
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <h1>Microscope Controller Simulator</h1>
+    <div>
+        <table>
+            <td>
+                <label for="api">API Endpoint:</label><br>
+                <input type="text" id="api" name="api" value="http://localhost:8001/api/"><br>
+            </td>
+        </table>
+        <hr>
+        <table>
+            <td>
+                <label for="sn">Serial Number:</label><br>
+                <input type="text" id="sn" name="sn" value="1000000001"><br>
+            </td>
+            <td>
+                <label for="mid">Microscope ID: <font color="red" id="notifmid">(Klik Get Microscope)</font></label><br>
+                <input type="text" id="mid" name="mid" value="" readonly><br>
+            </td>
+        </table>
+        <input type="button" style="margin-top: 0.5rem;" value="(1) Get Microscope" onclick="getMicroscope()"> | <input type="button" value="(2) Get Active Batch" onclick="getBatch()">
+        <hr>
+        <table>
+            <td>
+                <label for="bid">Batch ID: <font color="red" id="notifbid" style="display: none;">(Klik Get Active Batch)</font></label><br>
+                <input type="text" id="bid" name="bid" value="" readonly><br>
+            </td>
+            <td>
+                <label for="bin">Batch Number:</label><br>
+                <input type="text" id="bin" name="bin" value="" readonly><br>
+            </td>
+        </table>
+        <hr>
+        <div id="datacontrol" style="display: none;">
+            <table>
+                <td>
+                    <label for="step">Step:</label><br>
+                    <input type="number" id="step" name="step" value="0"><br>
+                    <label for="cpe1">CPE 1:</label><br>
+                    <input type="number" id="cpe1" name="cpe1" value="0"><br>
+                    <label for="cpe3">CPE 3:</label><br>
+                    <input type="number" id="cpe3" name="cpe3" value="0"><br>
+                </td>
+                <td>
+                    <label for="delay">Delay:</label><br>
+                    <input type="number" id="delay" name="delay" value="0"><br>
+                    <label for="cpe2">CPE 2:</label><br>
+                    <input type="number" id="cpe2" name="cpe2" value="0"><br>
+                    <label for="cpe4">CPE 4:</label><br>
+                    <input type="number" id="cpe4" name="cpe4" value="0"><br>
+                </td>
+            </table>
+        </div>
+        <div id="infocontrol" style="display: none; margin-top: 1rem;">
+            <label for="condition">Batch Condition: </label>&nbsp;<strong id="condition">Stop</strong> | 
+            <label for="status">Slider Status: </label>&nbsp;<strong id="status">Standby</strong> | 
+            <label for="mode">Slider Mode: </label>&nbsp;<strong id="mode">Auto</strong><br>
+        </div>
+        <div id="maincontrol" style="display: none; margin-top: 1rem;">
+            <input type="button" id="btnAuto" value="Auto" onclick="changeMode('auto')">
+            <input type="button" id="btnManual" value="Manual" onclick="changeMode('manual')">
+            <input type="button" id="btnHardReset" value="Hard Reset" onclick="hardReset()" class="hardReset"><br>
+            <div style="display: none;">
+                <input type="button" style="margin-top: 1rem;" value="Start" onclick="start()" disabled>
+                <input type="button" style="margin-top: 1rem;" value="Stop" onclick="stop()" disabled><br>
+            </div>
+            <input type="button" style="margin-top: 1rem;" id="btnCalibrate" value="Calibrate" onclick="calibrate()">
+            <input type="button" style="margin-top: 1rem;" id="btnPredict" value="Predict" onclick="predict()"><br>
+            <input type="button" style="margin-top: 1rem;" id="btnLeft" value="Left" onclick="move(-1)">
+            <input type="button" style="margin-top: 1rem;" id="btnRight" value="Right" onclick="move(1)"><br>
+            <input type="button" style="margin-top: 1rem;" id="btnRegion1" value="Region 1" onclick="region(1)">
+            <input type="button" style="margin-top: 1rem;" id="btnRegion2" value="Region 2" onclick="region(2)">
+            <input type="button" style="margin-top: 1rem;" id="btnRegion3" value="Region 3" onclick="region(3)">
+            <input type="button" style="margin-top: 1rem;" id="btnRegion4" value="Region 4" onclick="region(4)">
+            <input type="button" style="margin-top: 1rem;" id="btnRegion5" value="Region 5" onclick="region(5)">
+        </div>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            let apikey = $('#apikey').val();
+            let microscopeId = null;
+            let batchId = null;
+            let mode = null;
+            let batchMicroscopeId = null;
+            toastr.options = {
+                "positionClass": "toast-top-right",
+                "preventDuplicates": true,
+                "timeOut": "2000"
+            };
+            toastr.info('Welcome to Microscope Controller Simulator');
+
+            let token = localStorage.getItem('token');
+            if (token) {
+                toastr.info('Token found');
+                $.ajaxSetup({
+                    headers: {
+                        "Authorization": "Bearer " + token,
+                    },
+                });
+            } else {
+                toastr.info('Token not found');
+                login();
+            }
+        });
+
+        function login() {
+            let api = $('#api').val();
+            let username = 'superadmin';
+            let password = 'password';
+            $.ajax({
+                url: api + 'auth/login',
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    username: username,
+                    password: password
+                },
+                success: function(data) {
+                    localStorage.setItem('token', data.data.token);
+                    toastr.success('Login success');
+                    $.ajaxSetup({
+                        headers: {
+                            "Authorization": "Bearer " + data.data.token,
+                        },
+                    });
+                },
+                error: function(xhr, status, error) {
+                    console.log('Error: ' + error.message);
+                    toastr.error('Login failed');
+                }
+            });
+        }
+
+        function getMicroscope() {
+            var api = $('#api').val();
+            var sn = $('#sn').val();
+            $.ajax({
+                url: api + 'microscope/find/?serial_number=' + sn,
+                type: 'GET',
+                dataType: 'json',
+                success: function(data) {
+                    microscopeId = data.result.id;
+                    $('#mid').val(data.result.id);
+                    $('#notifmid').hide();
+                    $('#notifbid').show();
+                    toastr.success('Microscope found');
+                },
+                error: function(xhr, status, error) {
+                    console.log('Error: ' + error.message);
+                    toastr.error('Microscope not found');
+
+                    if (xhr.status == 401 || xhr.status == 403) {
+                        login();
+                    }
+                }
+            });
+        }
+
+        function getBatch() {
+            var api = $('#api').val();
+            $.ajax({
+                url: api + 'batch/dashboard?microscope_id=' + microscopeId,
+                type: 'GET',
+                dataType: 'json',
+                success: function(data) {
+                    batchId = data.result.id;
+                    // loop data.result.batch_microscopes
+                    for (let i = 0; i < data.result.batch_microscopes.length; i++) {
+                        if (data.result.batch_microscopes[i].microscope_id == microscopeId) {
+                            batchMicroscopeId = data.result.batch_microscopes[i].id;
+                            break;
+                        }
+                    }
+                    $('#bid').val(data.result.id);
+                    $('#bin').val(data.result.number);
+                    $('#datacontrol').show();
+                    $('#infocontrol').show();
+                    $('#maincontrol').show();
+                    $('#notifbid').hide();
+                    toastr.success('Active batch found');
+                    getStatus();
+                },
+                error: function(xhr, status, error) {
+                    console.log('Error: ' + error.message);
+                    toastr.error('Batch not found');
+
+                    if (xhr.status == 401 || xhr.status == 403) {
+                        login();
+                    }
+                }
+            });
+        }
+
+        $('#cpe1, #cpe2, #cpe3, #cpe4, #step, #delay').on('change', function() {
+            var api = $('#api').val();
+            var cpe1 = $('#cpe1').val();
+            var cpe2 = $('#cpe2').val();
+            var cpe3 = $('#cpe3').val();
+            var cpe4 = $('#cpe4').val();
+            var step = $('#step').val();
+            var delay = $('#delay').val();
+            $.ajax({
+                url: api + 'batch/setting/update/',
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    batch_id: batchId,
+                    microscope_id: microscopeId,
+                    cpe1_time: cpe1,
+                    cpe2_time: cpe2,
+                    cpe3_time: cpe3,
+                    cpe4_time: cpe4,
+                    step: step,
+                    delay: delay
+                },
+                success: function(data) {
+                    console.log('Success: ' + data.message);
+                    toastr.success('CPE time and step/delay updated');
+                },
+                error: function(xhr, status, error) {
+                    console.log('Error: ' + error.message);
+                    toastr.error('CPE time and step/delay not updated');
+                }
+            });
+        });
+
+        function getStatus() {
+            var api = $('#api').val();
+            $.ajax({
+                url: api + 'batch/setting/show?batch=' + batchId + '&microscope=' + microscopeId,
+                type: 'GET',
+                dataType: 'json',
+                success: function(data) {
+                    $('#cpe1').val(data.result.cpe1_time);
+                    $('#cpe2').val(data.result.cpe2_time);
+                    $('#cpe3').val(data.result.cpe3_time);
+                    $('#cpe4').val(data.result.cpe4_time);
+                    $('#step').val(data.result.step);
+                    $('#delay').val(data.result.delay);
+                    
+                    $('#condition').text(data.result.start == 0 ? 'Stop' : 'Running');
+                    $('#mode').text(data.result.metode == 0 ? 'Auto' : 'Manual');
+                    mode = data.result.metode == 0 ? 'auto' : 'manual';
+                    let status = null;
+                    if (data.result.arah !== 0 || data.result.arah_region !== 0) {
+                        status = 'Moving';
+                    } else if (data.result.calibrate == 1) {
+                        status = 'Calibrating';
+                    } else if (data.result.predict == 1 || data.result.predict_auto == 1) {
+                        status = 'Predicting';
+                    } else {
+                        status = 'Standby';
+                    }
+                    $('#status').text(status);
+                    
+                    if(status == 'Moving' || status == 'Calibrating' || status == 'Predicting') {
+                        $('#btnAuto').prop('disabled', true);
+                        $('#btnManual').prop('disabled', true);
+                        $('#btnCalibrate').prop('disabled', true);
+                        $('#btnPredict').prop('disabled', true);
+                        $('#btnLeft').prop('disabled', true);
+                        $('#btnRight').prop('disabled', true);
+                        $('#btnRegion1').prop('disabled', true);
+                        $('#btnRegion2').prop('disabled', true);
+                        $('#btnRegion3').prop('disabled', true);
+                        $('#btnRegion4').prop('disabled', true);
+                        $('#btnRegion5').prop('disabled', true);
+                    } else {
+                        $('#btnAuto').prop('disabled', false);
+                        $('#btnManual').prop('disabled', false);
+                        $('#btnCalibrate').prop('disabled', false);
+                        $('#btnPredict').prop('disabled', false);
+                        $('#btnLeft').prop('disabled', false);
+                        $('#btnRight').prop('disabled', false);
+                        $('#btnRegion1').prop('disabled', false);
+                        $('#btnRegion2').prop('disabled', false);
+                        $('#btnRegion3').prop('disabled', false);
+                        $('#btnRegion4').prop('disabled', false);
+                        $('#btnRegion5').prop('disabled', false);
+                    }
+
+                    if (data.result.metode == 0) {
+                        $('#btnAuto').prop('disabled', true);
+                        $('#btnManual').prop('disabled', false);
+                    } else {
+                        $('#btnAuto').prop('disabled', false);
+                        $('#btnManual').prop('disabled', true);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.log('Error: ' + error.message);
+                }
+            });
+        }
+
+        function changeMode(val) {
+            var api = $('#api').val();
+            $.ajax({
+                url: api + '/microscope/control/' + batchMicroscopeId + '/mode',
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    mode: val == 'auto' ? 0 : 1
+                },
+                success: function(data) {
+                    console.log('Success: ' + data.message);
+                    toastr.success('Mode updated to ' + val);
+                    getStatus();
+                },
+                error: function(xhr, status, error) {
+                    console.log('Error: ' + error.message);
+                    toastr.error('Mode not updated');
+                }
+            });
+        }
+
+        function start() {
+            var api = $('#api').val();
+            $.ajax({
+                url: api + 'batch/update/' + batchId + '/run',
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    status: 1
+                },
+                success: function(data) {
+                    console.log('Success: ' + data.message);
+                    toastr.success('Microscope started');
+                    getStatus();
+                },
+                error: function(xhr, status, error) {
+                    console.log('Error: ' + error.message);
+                    toastr.error('Microscope not started');
+                }
+            });
+        }
+
+        function stop() {
+            var api = $('#api').val();
+            $.ajax({
+                url: api + 'batch/update/' + batchId + '/run',
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    status: 0
+                },
+                success: function(data) {
+                    console.log('Success: ' + data.message);
+                    toastr.success('Microscope stopped');
+                    getStatus();
+                },
+                error: function(xhr, status, error) {
+                    console.log('Error: ' + error.message);
+                    toastr.error('Microscope not stopped');
+                }
+            });
+        }
+
+        function calibrate() {
+            var api = $('#api').val();
+            $.ajax({
+                url: api + 'microscope/control/' + batchMicroscopeId + '/calibrate',
+                type: 'POST',
+                dataType: 'json',
+                success: function(data) {
+                    console.log('Success: ' + data.message);
+                    toastr.success('Microscope calibrating');
+                    getStatus();
+                },
+                error: function(xhr, status, error) {
+                    console.log('Error: ' + error.message);
+                    toastr.error('Microscope not calibrating');
+                }
+            });
+        }
+
+        function predict() {
+            var api = $('#api').val();
+            $.ajax({
+                url: api + 'microscope/control/' + batchMicroscopeId + '/predict',
+                type: 'POST',
+                dataType: 'json',
+                success: function(data) {
+                    console.log('Success: ' + data.message);
+                    toastr.success('Microscope predicting');
+                    getStatus();
+                },
+                error: function(xhr, status, error) {
+                    console.log('Error: ' + error.message);
+                    toastr.error('Microscope not predicting');
+                }
+            });
+        }
+
+        function move(direction) {
+            var api = $('#api').val();
+            $.ajax({
+                url: api + 'microscope/control/' + batchMicroscopeId + '/move_step',
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    to: direction
+                },
+                success: function(data) {
+                    console.log('Success: ' + data.message);
+                    toastr.success('Microscope moving to ' + direction);
+                    getStatus();
+                },
+                error: function(xhr, status, error) {
+                    console.log('Error: ' + error.message);
+                    toastr.error('Microscope not moving');
+                }
+            });
+        }
+
+        function region(r) {
+            var api = $('#api').val();
+            $.ajax({
+                url: api + 'microscope/control/' + batchMicroscopeId + '/move_to_region',
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    region: r
+                },
+                success: function(data) {
+                    console.log('Success: ' + data.message);
+                    toastr.success('Microscope moving to region ' + r);
+                    getStatus();
+                },
+                error: function(xhr, status, error) {
+                    console.log('Error: ' + error.message);
+                    toastr.error('Microscope not moving');
+                }
+            });
+        }
+
+        function hardReset() {
+            if (confirm('Are you sure to hard reset?')) {
+                var api = $('#api').val();
+                $.ajax({
+                    url: api + 'formicroscope/reset_all?batch_id=' + batchId + '&microscope_id=' + microscopeId,
+                    type: 'GET',
+                    dataType: 'json',
+                    headers: {
+                        "X-API-Key": "bio123"
+                    },
+                    success: function(data) {
+                        console.log('Success: ' + data.message);
+                        toastr.success('Microscope hard reset');
+                        getStatus();
+                    },
+                    error: function(xhr, status, error) {
+                        console.log('Error: ' + error.message);
+                        toastr.error('Microscope not hard reset');
+                    }
+                });
+            }
+        }
+
+        // setInterval(function() {
+        //     if (batchId && microscopeId) {
+        //         getStatus();
+        //     }
+        // }, 5000);
+    </script>
+</body>
+</html>
